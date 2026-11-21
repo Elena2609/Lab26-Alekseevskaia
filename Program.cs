@@ -7,6 +7,7 @@ string dataDirectory = "data";
 string inputPath = Path.Combine(dataDirectory, "scores.txt");
 string reportPath = Path.Combine(dataDirectory, "report.txt");
 string historyPath = Path.Combine(dataDirectory, "history.txt");
+string validPath = Path.Combine(dataDirectory, "valid-scores.txt");
 try
 {
     Directory.CreateDirectory(dataDirectory);
@@ -25,6 +26,8 @@ try
     List<string> report = BuildReport(scores, skipped);
     File.WriteAllLines(reportPath, report, Encoding.UTF8);
 
+    SaveValidScores(validPath, scores);
+
     string historyEntry = $"Сохранено: {scores.Count}; пропущено: {skipped}; сумма: {SumScores(scores)}";
     File.AppendAllText(historyPath, historyEntry + Environment.NewLine, Encoding.UTF8);
 
@@ -35,6 +38,7 @@ try
     }
     Console.WriteLine($"Отчёт сохранён: {Path.GetFullPath(reportPath)}");
     Console.WriteLine($"История дополнена: {Path.GetFullPath(historyPath)}");
+    Console.WriteLine($"Корректные результаты: {Path.GetFullPath(validPath)}");
 }
 catch (FileNotFoundException)
 {
@@ -90,7 +94,7 @@ List<string> BuildReport(List<int> scores, int skipped)
     {
         double average = (double)SumScores(scores) / scores.Count;
         report.Add($"Среднее: {average}");
-    } 
+    }
     report.Add("Результаты:");
     if (scores.Count == 0)
     {
@@ -105,4 +109,16 @@ List<string> BuildReport(List<int> scores, int skipped)
     }
 
     return report;
+} 
+
+//13. Самостоятельное задание
+//Вариант 1. Только корректные результаты
+void SaveValidScores(string path, List<int> scores)
+{
+    List<string> lines = new List<string>();
+    foreach (int score in scores)
+    {
+        lines.Add(Convert.ToString(score));
+    }
+    File.WriteAllLines(path, lines, Encoding.UTF8);
 }
