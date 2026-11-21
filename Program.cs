@@ -2,105 +2,107 @@
 using System.IO;
 using System.Text;
 
-//2. Пути и рабочая папка
+//8. Основная часть — «Файловый журнал результатов»
 string dataDirectory = "data";
 string inputPath = Path.Combine(dataDirectory, "scores.txt");
-Console.WriteLine($"Рабочая папка: {Directory.GetCurrentDirectory()}");
-Console.WriteLine($"Полный путь к файлу: {Path.GetFullPath(inputPath)}");
-
-Directory.CreateDirectory(dataDirectory);
-Console.WriteLine(File.Exists(inputPath));
-
-//3. Запись и чтение всего текста
-string notePath = Path.Combine("data", "note.txt");
-Directory.CreateDirectory("data");
-
-File.WriteAllText(notePath, "Привет, файл!", Encoding.UTF8);
-
-string text = File.ReadAllText(notePath, Encoding.UTF8);
-Console.WriteLine(text);
-
-//4. Добавление текста в конец файла
-// string journalPath = Path.Combine("data", "journal.txt");
-
-// File.WriteAllText(journalPath, "Первый запуск" + Environment.NewLine, Encoding.UTF8);
-// File.AppendAllText(journalPath, "Второй запуск" + Environment.NewLine, Encoding.UTF8);
-
-// Console.Write(File.ReadAllText(journalPath, Encoding.UTF8));
-
-//Найдите ошибку: история потерялась
-// string historyExamplePath = Path.Combine("data", "history-example.txt");
-// File.WriteAllText(historyExamplePath, "Запись 1" + Environment.NewLine, Encoding.UTF8);
-// File.AppendAllText(historyExamplePath, "Запись 2" + Environment.NewLine, Encoding.UTF8);
-// Console.Write(File.ReadAllText(historyExamplePath, Encoding.UTF8));
-
-//5. Файл как массив строк
-string linesPath = Path.Combine("data", "lines-example.txt");
-string[] sourceLines = { "80", "90", "70" };
-
-File.WriteAllLines(linesPath, sourceLines, Encoding.UTF8);
-string[] loadedLines = File.ReadAllLines(linesPath, Encoding.UTF8);
-
-Console.WriteLine($"Строк: {loadedLines.Length}");
-
-foreach (string line in loadedLines)
+string reportPath = Path.Combine(dataDirectory, "report.txt");
+string historyPath = Path.Combine(dataDirectory, "history.txt");
+try
 {
-    Console.WriteLine(line);
+    Directory.CreateDirectory(dataDirectory);
+    Console.WriteLine($"Входной файл: {Path.GetFullPath(inputPath)}");
+
+    if (!File.Exists(inputPath))
+    {
+        Console.WriteLine("Входной файл не найден или недоступен");
+        return;
+    }
+
+    string[] lines = File.ReadAllLines(inputPath, Encoding.UTF8);
+    List<int> scores = ParseScores(lines);
+    int skipped = lines.Length - scores.Count;
+
+    List<string> report = BuildReport(scores, skipped);
+    File.WriteAllLines(reportPath, report, Encoding.UTF8);
+
+    string historyEntry = $"Сохранено: {scores.Count}; пропущено: {skipped}; сумма: {SumScores(scores)}";
+    File.AppendAllText(historyPath, historyEntry + Environment.NewLine, Encoding.UTF8);
+
+    Console.WriteLine(">>> Отчёт по файлу <<");
+    foreach (string line in report)
+    {
+        Console.WriteLine(line);
+    }
+    Console.WriteLine($"Отчёт сохранён: {Path.GetFullPath(reportPath)}");
+    Console.WriteLine($"История дополнена: {Path.GetFullPath(historyPath)}");
+}
+catch (FileNotFoundException)
+{
+    Console.WriteLine("Файл для чтения не найден");
+}
+catch (UnauthorizedAccessException)
+{
+    Console.WriteLine("Нет доступа к файлу или папке");
+}
+catch (IOException)
+{
+    Console.WriteLine("Ошибка чтения или записи файла");
 }
 
+
 //Преобразование строк в числа
-// List<int> ParseScores(string[] lines)
-// {
-//     List<int> scores = new List<int>();
-
-//     foreach (string line in lines)
-//     {
-//         if (int.TryParse(line, out int score) && score >= 0 && score <= 100)
-//         {
-//             scores.Add(score);
-//         }
-//     }
-//     return scores;
-// }
-
-string[] testLines = { "80", "abc", "101", "90", "", "70", "2147483648" };
-List<int> parsedScores = ParseScores(testLines);
-Console.WriteLine($"Принято: {parsedScores.Count}");
-Console.WriteLine($"Пропущено: {testLines.Length - parsedScores.Count}");
-
-//Найдите ошибку: одна плохая строка остановила обработку
 List<int> ParseScores(string[] lines)
 {
     List<int> scores = new List<int>();
+
     foreach (string line in lines)
-    { if (int.TryParse(line, out int score) && score >= 0 && score <= 100)
+    {
+        if (int.TryParse(line, out int score) && score >= 0 && score <= 100)
         {
             scores.Add(score);
         }
     }
     return scores;
 }
-foreach (int a in parsedScores)
-{
-    Console.WriteLine(a);
-} 
 
-//7. Ошибки файловых операций
-string missingPath = Path.Combine("data", "missing-example.txt");
-try
+int SumScores(List<int> scores)
 {
- string missingText = File.ReadAllText(missingPath, Encoding.UTF8);
- Console.WriteLine(missingText);
+    int sum = 0;
+    foreach (int score in scores)
+    {
+        sum += score;
+    }
+    return sum;
 }
-catch (FileNotFoundException)
+
+List<string> BuildReport(List<int> scores, int skipped)
 {
- Console.WriteLine("Файл не найден");
-}
-catch (UnauthorizedAccessException)
-{
- Console.WriteLine("Нет доступа к файлу или папке");
-}
-catch (IOException)
-{
- Console.WriteLine("Ошибка чтения или записи файла");
+    List<string> report = new List<string>();
+    report.Add($"Сохранено результатов: {scores.Count}");
+    report.Add($"Пропущено строк: {skipped}");
+    report.Add($"Сумма: {SumScores(scores)}");
+
+    if (scores.Count == 0)
+    {
+        report.Add("Среднее не вычисляется: список пуст");
+    }
+    else
+    {
+        double average = (double)SumScores(scores) / scores.Count;
+        report.Add($"Среднее: {average}");
+    } 
+    report.Add("Результаты:");
+    if (scores.Count == 0)
+    {
+        report.Add("Список пуст");
+    }
+    else
+    {
+        foreach (int score in scores)
+        {
+            report.Add(score.ToString());
+        }
+    }
+
+    return report;
 }
